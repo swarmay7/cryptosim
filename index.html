@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cryptocurrency Simulator — Optimized</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#071428; --panel:rgba(255,255,255,0.03); --muted:#9ab0c4; --accent1:#7c3aed; --accent2:#06b6d4;
+      --radius:12px; --shadow:0 10px 30px rgba(2,6,23,0.6);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,var(--bg),#071a2b);color:#eaf6ff;-webkit-font-smoothing:antialiased}
+    .wrap{max-width:1200px;margin:22px auto;padding:18px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:54px;height:54px;border-radius:12px;background:linear-gradient(135deg,var(--accent2),var(--accent1));display:flex;align-items:center;justify-content:center;font-weight:800;color:white}
+    h1{font-size:20px;margin:0}
+    .subtitle{font-size:13px;color:var(--muted)}
+    .controls{display:flex;gap:8px;align-items:center}
+    .btn{padding:8px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+    .btn.primary{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;box-shadow:0 8px 24px rgba(92,40,219,0.12)}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:inherit}
+    .grid{display:grid;grid-template-columns:1fr 380px;gap:18px;margin-top:16px}
+    @media(max-width:980px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--panel);padding:14px;border-radius:var(--radius);box-shadow:var(--shadow)}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input,select{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    .row{display:flex;gap:10px;align-items:center}
+    .wallet-item{display:flex;justify-content:space-between;padding:10px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);margin-bottom:8px}
+    .mempool-item{padding:10px;border-radius:10px;margin-bottom:8px;background:rgba(255,255,255,0.01)}
+    .chain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    .small{font-size:13px;color:var(--muted)}
+    pre{background:rgba(0,0,0,0.12);padding:10px;border-radius:8px;color:var(--muted);font-size:13px;overflow:auto}
+    footer{margin-top:14px;text-align:center;color:var(--muted);font-size:13px}
+    .metric{font-weight:800;font-size:16px}
+    .kbd{background:rgba(255,255,255,0.04);padding:6px 8px;border-radius:6px;font-weight:700}
+    .progress{height:10px;background:rgba(255,255,255,0.03);border-radius:6px;overflow:hidden}
+    .progress-inner{height:100%;background:linear-gradient(90deg,var(--accent1),var(--accent2));width:0%}
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:60}
+    .modal.active{display:flex}
+    .modal-card{background:var(--panel);padding:16px;border-radius:12px;max-width:820px;width:94%;max-height:86vh;overflow:auto}
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app">
+    <header>
+      <div class="brand">
+        <div class="logo">CS</div>
+        <div>
+          <h1>Cryptocurrency Simulator</h1>
+          <div class="subtitle">Reliable, focused simulator — wallets, mempool, mining, and block explorer</div>
+        </div>
+      </div>
+      <div class="controls" role="toolbar" aria-label="Top controls">
+        <div class="small">Difficulty</div>
+        <input id="difficulty" type="range" min="1" max="5" value="3" aria-label="Mining difficulty" style="width:160px">
+        <button id="toggleMine" class="btn primary" aria-pressed="false">Start Mining</button>
+        <button id="exportBtn" class="btn ghost">Export</button>
+      </div>
+    </header>
+
+    <div class="grid" style="margin-top:18px">
+      <main class="card" aria-labelledby="mainTitle">
+        <div id="mainTitle" class="small"><strong>Transactions & Mining</strong></div>
+
+        <div style="display:grid;grid-template-columns:1fr 260px;gap:12px;margin-top:10px">
+          <section>
+            <label for="from">From</label>
+            <select id="from" aria-label="Sender"></select>
+
+            <label for="to" style="margin-top:8px">To</label>
+            <input id="to" placeholder="recipient_pub" />
+
+            <div class="row" style="margin-top:8px">
+              <div style="flex:1">
+                <label for="amount">Amount</label>
+                <input id="amount" type="number" value="1" min="0.01" step="0.01">
+              </div>
+              <div style="width:120px">
+                <button id="addTx" class="btn primary" style="width:100%">Add</button>
+              </div>
+            </div>
+
+            <div style="margin-top:12px" class="small"><span class="kbd">Tip</span> The simulator persists state in your browser. Export/import to share chains.</div>
+
+            <div style="margin-top:14px">
+              <div class="small">Mempool (<span id="mempoolCount">0</span>)</div>
+              <div id="mempool" style="margin-top:8px;max-height:160px;overflow:auto"></div>
+            </div>
+          </section>
+
+          <aside class="card" style="padding:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="small">Miner</div>
+              <div class="metric" id="minerPub">miner_1</div>
+            </div>
+
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button id="createWallet" class="btn ghost" style="flex:1">New wallet</button>
+              <button id="validate" class="btn ghost" style="flex:1">Validate</button>
+            </div>
+
+            <div style="margin-top:12px">
+              <div class="small">Mining progress</div>
+              <div class="progress" style="margin-top:6px"><div id="progressInner" class="progress-inner"></div></div>
+              <div style="display:flex;justify-content:space-between;margin-top:8px"><div class="small">Attempts: <span id="attempts">0</span></div><div class="small">Blocks: <span id="blocks">0</span></div></div>
+            </div>
+          </aside>
+        </div>
+
+        <section style="margin-top:16px">
+          <div class="small">Chain (<span id="blockCount">1</span> blocks)</div>
+          <div id="chainList" class="chain-grid" style="margin-top:8px"></div>
+        </section>
+      </main>
+
+      <aside>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center"><div><strong>Wallets</strong></div><div class="small">Balances</div></div>
+          <div id="wallets" style="margin-top:12px"></div>
+
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button id="exportState" class="btn ghost" style="flex:1">Export JSON</button>
+            <button id="importState" class="btn ghost" style="flex:1">Import</button>
+            <input id="importFile" type="file" accept="application/json" style="display:none">
+          </div>
+
+          <div style="margin-top:12px">
+            <div class="small">Balances chart</div>
+            <canvas id="balanceChart" width="340" height="120" style="margin-top:8px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border-radius:8px"></canvas>
+          </div>
+
+          <div style="margin-top:12px"><pre id="status">Ready</pre></div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>Optimized for robust simulation; suitable for presentations and demos.</footer>
+  </div>
+
+  <div id="modal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center"><div><strong id="modalTitle">Block</strong></div><div><button id="modalClose" class="btn ghost">Close</button></div></div>
+      <pre id="modalBody" style="margin-top:12px"></pre>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE = 'opt_sim_v1';
+
+    const utf8 = s => new TextEncoder().encode(s);
+    async function sha256Hex(s){ const h = await crypto.subtle.digest('SHA-256', utf8(s)); return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+    function randId(n=6){ return Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,n); }
+    function now(){ return Date.now(); }
+
+    let state = JSON.parse(localStorage.getItem(STORAGE) || 'null') || {
+      chain: [{ index:0, timestamp: now(), transactions:[], previousHash:'0'.repeat(64), nonce:0, hash:'0'.repeat(64), miner:'genesis', reward:0 }],
+      mempool: [], wallets: [ { pub:'alice', balance:100 }, { pub:'bob', balance:50 } ], minerPub:'miner_1', difficulty:3, attempts:0, blocks:0
+    };
+
+    const fromSel = document.getElementById('from'), walletsDiv = document.getElementById('wallets'), mempoolDiv = document.getElementById('mempool');
+    const chainList = document.getElementById('chainList'), statusEl = document.getElementById('status'), difficultyEl = document.getElementById('difficulty');
+    const toggleMineBtn = document.getElementById('toggleMine'), addTxBtn = document.getElementById('addTx'), createWalletBtn = document.getElementById('createWallet');
+    const validateBtn = document.getElementById('validate'), exportStateBtn = document.getElementById('exportState'), importStateBtn = document.getElementById('importState');
+    const importFile = document.getElementById('importFile'), attemptsEl = document.getElementById('attempts'), blocksEl = document.getElementById('blocks');
+    const progressInner = document.getElementById('progressInner'), minerPubEl = document.getElementById('minerPub');
+    const blockCountEl = document.getElementById('blockCount'), balanceCanvas = document.getElementById('balanceChart');
+    const modal = document.getElementById('modal'), modalBody = document.getElementById('modalBody'), modalClose = document.getElementById('modalClose');
+
+    function save(){ try{ localStorage.setItem(STORAGE, JSON.stringify(state)); } catch(e){ console.warn('save failed'); } }
+
+    function recalcBalances(){
+      const b = {}; state.wallets.forEach(w=>b[w.pub]=0);
+      for(const block of state.chain){
+        for(const tx of block.transactions || []){
+          b[tx.from] = (b[tx.from]||0) - Number(tx.amount);
+          b[tx.to] = (b[tx.to]||0) + Number(tx.amount);
+        }
+        if(block.miner) b[block.miner] = (b[block.miner]||0) + (block.reward || 0);
+      }
+      state.wallets = state.wallets.map(w=>({ ...w, balance: (b[w.pub] ?? w.balance ?? 0) }));
+    }
+
+    function renderWallets(){
+      fromSel.innerHTML=''; walletsDiv.innerHTML='';
+      state.wallets.forEach(w=>{
+        const opt = document.createElement('option'); opt.value=w.pub; opt.textContent = `${w.pub} (${Number(w.balance||0).toFixed(2)})`; fromSel.appendChild(opt);
+        const el = document.createElement('div'); el.className='wallet-item'; el.innerHTML = `<div>${w.pub}</div><div style="font-weight:700">${Number(w.balance||0).toFixed(2)}</div>`;
+        walletsDiv.appendChild(el);
+      });
+    }
+
+    function renderMempool(){ mempoolDiv.innerHTML=''; state.mempool.forEach(tx=>{ const d=document.createElement('div'); d.className='mempool-item'; d.innerHTML = `<div class="small">${tx.id} · ${new Date(tx.timestamp).toLocaleTimeString()}</div><div style="margin-top:6px"><strong>${tx.from}</strong> → <strong>${tx.to}</strong> : <strong>${Number(tx.amount).toFixed(2)}</strong></div>`; mempoolDiv.appendChild(d); }); document.getElementById('mempoolCount').textContent = state.mempool.length; }
+
+    async function renderChain(){
+      chainList.innerHTML=''; blockCountEl.textContent = state.chain.length;
+      const reversed = [...state.chain].reverse();
+      for(const block of reversed){
+        const b = document.createElement('div'); b.className='card'; b.style.padding='10px';
+        const txCount = (block.transactions || []).length;
+        b.innerHTML = `<div class="small">Block #${block.index} · ${new Date(block.timestamp).toLocaleString()}</div>
+                       <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center"><div><strong>${block.miner}</strong><div class="small">Txs: ${txCount} · nonce: ${block.nonce}</div></div><div><div class="kbd">${block.reward || 0}</div></div></div>
+                       <div style="margin-top:8px;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${block.hash}</div>
+                       <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost" data-action="view" data-index="${block.index}">View</button></div>`;
+        chainList.appendChild(b);
+      }
+    }
+
+    function drawBalances(){
+      const ctx = balanceCanvas.getContext('2d');
+      const w = balanceCanvas.width, h = balanceCanvas.height;
+      ctx.clearRect(0,0,w,h);
+      ctx.font = '12px Inter, Arial';
+      const max = Math.max(...state.wallets.map(x=>x.balance), 10);
+      const barH = Math.floor((h - 8) / Math.max(state.wallets.length,1));
+      state.wallets.forEach((wl,i)=>{
+        const y = 4 + i*barH;
+        const bw = Math.round((wl.balance / max) * (w - 120));
+        ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(8, y, w-16, barH-6);
+        const g = ctx.createLinearGradient(0,0,w,0); g.addColorStop(0,'#7c3aed'); g.addColorStop(1,'#06b6d4');
+        ctx.fillStyle = g; ctx.fillRect(8, y, Math.max(6,bw), barH-6);
+        ctx.fillStyle = '#eaf6ff'; ctx.fillText(wl.pub, 12, y + (barH/2)); ctx.fillStyle = '#cfeaf7'; ctx.fillText(String(wl.balance.toFixed(2)), 12 + bw + 8, y + (barH/2));
+      });
+    }
+
+    function updateUI(){ recalcBalances(); renderWallets(); renderMempool(); renderChain(); drawBalances(); minerPubEl.textContent = state.minerPub; attemptsEl.textContent = state.attempts; blocksEl.textContent = state.blocks; save(); }
+
+    document.getElementById('createWallet').addEventListener('click', ()=>{
+      const w = { pub: 'user_' + randId(4), balance: 0 };
+      state.wallets.push(w); updateUI(); statusEl.textContent = 'Created ' + w.pub;
+    });
+
+    document.getElementById('addTx').addEventListener('click', ()=>{
+      const from = fromSel.value; const to = document.getElementById('to').value.trim(); const amount = Number(document.getElementById('amount').value);
+      if(!from || !to || !amount || amount <= 0){ statusEl.textContent = 'Invalid transaction'; return; }
+      const sender = state.wallets.find(w=>w.pub===from);
+      if(!sender || (sender.balance || 0) < amount){ statusEl.textContent = 'Insufficient balance'; return; }
+      const tx = { id: 'tx_' + randId(6), from, to, amount: Number(amount.toFixed(2)), timestamp: now() };
+      state.mempool.push(tx); updateUI(); statusEl.textContent = 'Added ' + tx.id;
+    });
+
+    difficultyEl.addEventListener('input', (e)=>{ state.difficulty = Number(e.target.value); statusEl.textContent = 'Difficulty: ' + state.difficulty; save(); });
+
+    let mining = false; let stopFlag = false;
+
+    async function calculateHash(blockCandidate){
+      const raw = `${blockCandidate.index}|${blockCandidate.timestamp}|${blockCandidate.previousHash}|${blockCandidate.nonce}|${blockCandidate.miner}|${blockCandidate.reward}|${JSON.stringify(blockCandidate.transactions||[])}`;
+      return await sha256Hex(raw);
+    }
+
+    async function mineOnce(minerPub){
+      const prev = state.chain[state.chain.length - 1];
+      const index = prev.index + 1;
+      const timestamp = now();
+      const txs = state.mempool.slice(0,5);
+      const reward = 10;
+      let nonce = 0;
+      const target = '0'.repeat(state.difficulty);
+      let innerAttempts = 0;
+      while(!stopFlag){
+        const cand = { index, timestamp, transactions: txs, previousHash: prev.hash, nonce, miner: minerPub, reward };
+        const h = await calculateHash(cand);
+        state.attempts++; innerAttempts++;
+        if(h.startsWith(target)){
+          cand.hash = h;
+          state.chain.push(cand);
+          state.mempool = state.mempool.slice(txs.length);
+          state.blocks++;
+          statusEl.textContent = 'Mined block #' + index;
+          updateUI();
+          return;
+        }
+        nonce++;
+        if(innerAttempts % 1000 === 0){
+          progressInner.style.width = Math.min(100, (innerAttempts % 100000) / 1000) + '%';
+          attemptsEl.textContent = state.attempts;
+          await new Promise(r=>setTimeout(r,0));
+        }
+        if(innerAttempts > 500000){ statusEl.textContent = 'Nonce limit reached'; break; }
+      }
+    }
+
+    async function miningLoop(){
+      stopFlag = false;
+      while(!stopFlag){
+        await mineOnce(state.minerPub);
+        await new Promise(r=>setTimeout(r,200));
+      }
+      progressInner.style.width = '0%';
+    }
+
+    toggleMineBtn.addEventListener('click', ()=>{
+      mining = !mining;
+      toggleMineBtn.textContent = mining ? 'Stop Mining' : 'Start Mining';
+      toggleMineBtn.setAttribute('aria-pressed', String(mining));
+      if(mining){ miningLoop(); } else { stopFlag = true; }
+    });
+
+    document.getElementById('validate').addEventListener('click', async ()=>{
+      statusEl.textContent = 'Validating...';
+      for(let i=1;i<state.chain.length;i++){
+        const b = state.chain[i], p = state.chain[i-1];
+        if(b.previousHash !== p.hash){ statusEl.textContent = 'Invalid previousHash at block ' + i; return; }
+        const expected = await calculateHash({ index: b.index, timestamp: b.timestamp, transactions: b.transactions, previousHash: b.previousHash, nonce: b.nonce, miner: b.miner, reward: b.reward });
+        if(expected !== b.hash){ statusEl.textContent = 'Invalid hash at block ' + i; return; }
+        if(!b.hash.startsWith('0'.repeat(state.difficulty))){ statusEl.textContent = 'Block ' + i + ' fails difficulty'; return; }
+      }
+      statusEl.textContent = 'Chain valid';
+    });
+
+    exportStateBtn.addEventListener('click', ()=>{
+      const data = JSON.stringify({ chain: state.chain, mempool: state.mempool, wallets: state.wallets }, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'sim_chain.json'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    importStateBtn.addEventListener('click', ()=> importFile.click());
+    importFile.addEventListener('change', (ev)=>{
+      const f = ev.target.files[0]; if(!f) return;
+      const r = new FileReader(); r.onload = ()=>{ try{ const obj = JSON.parse(r.result); if(obj.chain) state.chain = obj.chain; if(obj.mempool) state.mempool = obj.mempool; if(obj.wallets) state.wallets = obj.wallets; updateUI(); statusEl.textContent = 'Imported'; } catch(e){ statusEl.textContent = 'Import failed'; } }; r.readAsText(f);
+    });
+
+    chainList.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button'); if(!btn) return;
+      if(btn.dataset.action === 'view'){
+        const idx = Number(btn.dataset.index);
+        const block = state.chain.find(b=>b.index === idx);
+        modalBody.textContent = JSON.stringify(block, null, 2);
+        modal.classList.add('active');
+      }
+    });
+
+    modalClose.addEventListener('click', ()=> modal.classList.remove('active'));
+
+    chainList.addEventListener('click', (e)=>{
+      const v = e.target.closest('button'); if(!v) return;
+      if(v.dataset.action === 'view'){
+        // handled above
+      }
+    });
+
+    updateUI();
+    window.addEventListener('beforeunload', ()=> save());
+  </script>
+</body>
+</html>
